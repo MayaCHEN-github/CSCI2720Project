@@ -1,12 +1,17 @@
 import ReactDOM from "react-dom/client";
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import './custom.css';
 import mapImage from './hong-kong-map.jpeg';
 import eventImage from './shutterstock.jpeg';
 import favoriteImage from './Disneyland .jpeg';
-import map2 from './map2.png';
 import DB from './db.jpeg';
+import data from './data.json';
+import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
+
+
+
+
 
 // Login
 class Login extends React.Component {
@@ -110,6 +115,8 @@ class UserDashboard extends React.Component {
         return <EventContent />;
       case 'Favorite':
         return <Favorite />;
+      case 'Map':
+        return <MapWithNavigate />;
       default:
         return null;
     }
@@ -193,6 +200,7 @@ class LocationContent extends React.Component {
     this.state = {
       activeMenuItem: 'Location',
       userName: 'Amanda',
+      sortMode: 'BY_LOCATION', // New state variable for sorting mode
     };
   }
 
@@ -208,11 +216,41 @@ class LocationContent extends React.Component {
     return icons[name];
   }
 
-  handleRowClick = (location) => {
-    this.props.navigate(`/user-dashboard/${location}`);
+  handleRowClick = (locationData) => {
+    this.props.navigate('/user-dashboard/singleLocation', { state: { locationData } });
   };
+  
+
+  toggleSortMode = () => {
+    this.setState(prevState => {
+      switch (prevState.sortMode) {
+        case 'BY_LOCATION':
+          return { sortMode: 'HIGH_TO_LOW' };
+        case 'HIGH_TO_LOW':
+          return { sortMode: 'LOW_TO_HIGH' };
+        default:
+          return { sortMode: 'BY_LOCATION' };
+      }
+    });
+  }
+
+  getSortedLocations() {
+    const { sortMode } = this.state;
+    const locations = [...data]; // Create a copy of the data
+
+    switch (sortMode) {
+      case 'HIGH_TO_LOW':
+        return locations.sort((a, b) => b.Events.length - a.Events.length);
+      case 'LOW_TO_HIGH':
+        return locations.sort((a, b) => a.Events.length - b.Events.length);
+      default:
+        return locations.sort((a, b) => a["Location Number"] - b["Location Number"]);
+    }
+  }
 
   render() {
+    const sortedLocations = this.getSortedLocations();
+
     return (
       <div>
         <div className="search-filter-row">
@@ -221,7 +259,7 @@ class LocationContent extends React.Component {
             <button className="search-btn">&#10140;</button>
           </div>
           <div className="col-md-4 ">
-            <button className="btn filter-btn">Filter: Order by Event Number</button>
+          <button className="btn filter-btn" onClick={this.toggleSortMode}>Filter: Order by Event Number</button>
           </div></div>
 
         <div className="image-row mt-3">
@@ -237,39 +275,67 @@ class LocationContent extends React.Component {
               </tr>
             </thead>
             <tbody>
-              <tr onClick={() => this.handleRowClick('singleLocation')}>
-                <td><svg viewBox="0 0 24 24" className="icon"><path d="M12 .587l3.297 6.677 7.4.574-5.35 5.209 1.263 7.367L12 17.75l-6.61 3.664 1.263-7.367-5.35-5.209 7.4-.574z"></path></svg></td>
-                <td>Tai Po Public Library</td>
-                <td>5</td>
-              </tr>
-              <tr onClick={() => this.handleRowClick('secondLocation')}>
-                <td><svg viewBox="0 0 24 24" className="icon"><path d="M12 .587l3.297 6.677 7.4.574-5.35 5.209 1.263 7.367L12 17.75l-6.61 3.664 1.263-7.367-5.35-5.209 7.4-.574z"></path></svg></td>
-                <td>Yuen Long Public Library</td>
-                <td>10</td>
-              </tr>
+              {sortedLocations.map(location => (
+                <tr key={location["Location Number"]} onClick={() => this.handleRowClick(location)}>
+                  <td><svg viewBox="0 0 24 24" className="icon"><path d="M12 .587l3.297 6.677 7.4.574-5.35 5.209 1.263 7.367L12 17.75l-6.61 3.664 1.263-7.367-5.35-5.209 7.4-.574z"></path></svg></td>
+                  <td>{location.Location}</td>
+                  <td>{location.Events.length}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
       </div>
-
-
     );
   }
-
 }
 
 // EventContent
 class EventContent extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      filterUnder100: false,
+    };
+  }
+
+  toggleFilter = () => {
+    this.setState(prevState => ({
+      filterUnder100: !prevState.filterUnder100,
+    }));
+  }
+
+  isPriceUnder100 = (priceString) => {
+    const prices = priceString.split(';').map(price => parseFloat(price.replace(/[^0-9.-]+/g, "")));
+    return prices.some(price => price < 100);
+  }
+
+  getFilteredEvents() {
+    let allEvents = [];
+    // Aggregate all events from each location
+    data.forEach(location => {
+      location.Events.forEach(event => {
+        if (!this.state.filterUnder100 || this.isPriceUnder100(event.Price)) {
+          allEvents.push(event);
+        }
+      });
+    });
+    return allEvents;
+  }
+
   render() {
+    const allEvents = this.getFilteredEvents();
+
     return (
       <div>
         <div className="image-row mt-3">
           <img src={eventImage} className="img-fluid" alt="Map" />
         </div>
         <div className="d-flex justify-content-end">
-          <button class="btn event-btn">Filter: Event whose price under $100</button>
+          <button class="btn event-btn" onClick={this.toggleFilter}>
+            {this.state.filterUnder100 ? "Show All Events" : "Filter: Event whose price under $100"}
+          </button>
         </div>
-
         <div className="table-row mt-3 flex-grow-1">
           <table className="table">
             <thead>
@@ -280,17 +346,13 @@ class EventContent extends React.Component {
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td>1</td>
-                <td>'Cheers!' Series: Hong Kong Oratorio Society – A Christmas of Joy and Peace</td>
-                <td>$380, $280, $180, $120</td>
-              </tr>
-              <tr>
-                <td>2</td>
-                <td>Yeung Ming Night Vibes' Cantonese Opera Excerpts</td>
-                <td>$340, $260, $240</td>
-              </tr>
-
+              {allEvents.map((event, index) => (
+                <tr key={index}>
+                  <td>{index + 1}</td>
+                  <td>{event["Event Name"]}</td>
+                  <td>{event.Price}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -337,8 +399,10 @@ class Favorite extends React.Component {
 
 function SingleLocationWithNavigate(props) {
   let navigate = useNavigate();
-  return <SingleLocation {...props} navigate={navigate} />;
+  let location = useLocation();
+  return <SingleLocation {...props} navigate={navigate} locationData={location.state?.locationData} />;
 }
+
 class SingleLocation extends React.Component {
   constructor(props) {
     super(props);
@@ -363,29 +427,43 @@ class SingleLocation extends React.Component {
     this.props.navigate('/user-dashboard');
   };
 
+  parsePosition(positionString) {
+    const [lat, lng] = positionString.split(',').map(Number);
+    return { lat, lng };
+  }
+
   render() {
-    const locationDetails = {
-      title: "Tai Po Public Library",
-      venue: "12 Chai Road, Tai Po",
-      date: "24.12.2023 (Sun) 3:00pm",
-      description: "A community library with resources for all ages.",
-      presenter: "Hong Kong Public Libraries",
-      price: "Free Entry"
+    const { locationData } = this.props;
+    if (!locationData) {
+      return <div>Loading...</div>; // Or handle the absence of data appropriately
+    }
+
+    const position = this.parsePosition(locationData.Position);
+    const mapStyles = {        
+      height: "400px",
+      width: "100%"
     };
 
     return (
       <div className="single-location-container">
-        <h1>{locationDetails.title}</h1>
+        <h1>{locationData.Location}</h1>
         <div className="map-container">
-          <img src={map2} className="img-fluid" alt="Map" />
+          <LoadScript googleMapsApiKey="AIzaSyC3Z5syc1h_61Bcp_qprCGb8z3usMzwkl4">
+            <GoogleMap
+              mapContainerStyle={mapStyles}
+              zoom={15}
+              center={position}
+            >
+              <Marker position={position} />
+            </GoogleMap>
+          </LoadScript>
         </div>
         <div className="details-container">
           <h2>Location Details</h2>
-          <p><strong>Venue:</strong> {locationDetails.venue}</p>
-          <p><strong>Date/Time:</strong> {locationDetails.date}</p>
-          <p><strong>Description:</strong> {locationDetails.description}</p>
-          <p><strong>Presenter:</strong> {locationDetails.presenter}</p>
-          <p><strong>Price:</strong> {locationDetails.price}</p>
+          <p><strong>Address:</strong> {locationData.Address}</p>
+          <p><strong>Hours:</strong> {locationData.Hours}</p>
+          <p><strong>Description:</strong> {locationData.Description}</p>
+          <p><strong>Price:</strong> {locationData.Price}</p>
         </div>
         <div className="comments-container">
           <h2>User Comments</h2>
@@ -410,79 +488,62 @@ class SingleLocation extends React.Component {
   }
 }
 
-function SecondLocationWithNavigate(props) {
+// Map, this is for map session (the bigger one)
+function MapWithNavigate(props) {
   let navigate = useNavigate();
-  return <SecondLocation {...props} navigate={navigate} />;
+  return <Map {...props} navigate={navigate} />;
 }
-class SecondLocation extends React.Component {
+
+class Map extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      comments: [],
-      newComment: ''
+      locations: data
     };
   }
 
-  handleNewCommentChange = (event) => {
-    this.setState({ newComment: event.target.value });
-  };
+  parsePosition(positionString) {
+    const [lat, lng] = positionString.split(',').map(Number);
+    return { lat, lng };
+  }
 
-  handleAddComment = () => {
-    this.setState(prevState => ({
-      comments: [...prevState.comments, prevState.newComment],
-      newComment: ''
-    }));
-  };
-
-  navigateBack = () => {
-    this.props.navigate('/user-dashboard');
+  handleMarkerClick = (locationData) => {
+    this.props.navigate('/user-dashboard/singleLocation', { state: { locationData } });
   };
 
   render() {
-    const locationDetails = {
-      title: "Yuen Long Public Library",
-      venue: "Yuen Long, Ma Tin Rd, 52",
-      date: "Opens 9am",
-      description: "All libraries (except self-service library stations) will be closed on the following public holidays: New Year's Day, the first three days of the Chinese New Year, Good Friday, Christmas Day and Boxing Day.",
-      presenter: "Hong Kong Public Libraries",
-      price: "Free Entry"
+    const mapStyles = {
+      height: "100vh",
+      width: "100%"
+    };
+
+    const defaultCenter = {
+      lat: 22.3193, // Central latitude of Hong Kong
+      lng: 114.1694 // Central longitude of Hong Kong
     };
 
     return (
-      <div className="single-location-container">
-        <h1>{locationDetails.title}</h1>
-        <div className="map-container">
-          <img src={map2} className="img-fluid" alt="Map" />
-        </div>
-        <div className="details-container">
-          <h2>Location Details</h2>
-          <p><strong>Venue:</strong> {locationDetails.venue}</p>
-          <p><strong>Date/Time:</strong> {locationDetails.date}</p>
-          <p><strong>Description:</strong> {locationDetails.description}</p>
-          <p><strong>Presenter:</strong> {locationDetails.presenter}</p>
-          <p><strong>Price:</strong> {locationDetails.price}</p>
-        </div>
-        <div className="comments-container">
-          <h2>User Comments</h2>
-          <div className="comments-list">
-            {this.state.comments.map((comment, index) => (
-              <p key={index}>{comment}</p>
-            ))}
-          </div>
-          <div className="add-comment-container">
-            <input
-              type="text"
-              value={this.state.newComment}
-              onChange={this.handleNewCommentChange}
-              placeholder="Write a comment..."
-            />
-            <button onClick={this.handleAddComment}>Add Comment</button>
-          </div>
-
-        </div>
-        <button onClick={this.navigateBack}>Back to Dashboard</button>
-      </div>
-    );
+      <LoadScript googleMapsApiKey="AIzaSyC3Z5syc1h_61Bcp_qprCGb8z3usMzwkl4">
+        <GoogleMap
+          mapContainerStyle={mapStyles}
+          zoom={11} // Adjusted zoom level
+          center={defaultCenter}
+        >
+          {
+           this.state.locations.map(item => {
+            const position = this.parsePosition(item.Position);
+            return (
+              <Marker 
+                key={item["Location Number"]} 
+                position={position} 
+                onClick={() => this.handleMarkerClick(item)}
+                />
+              )
+            })
+          }
+        </GoogleMap>
+      </LoadScript>
+    )
   }
 }
 
@@ -675,9 +736,7 @@ class App extends React.Component {
           <Route path="/login" element={<LoginWithNavigate />} />
           <Route path="/user-dashboard" element={<UserDashboardWithNavigate />} />
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
-
           <Route path="/user-dashboard/singleLocation" element={<SingleLocationWithNavigate />} />
-          <Route path="/user-dashboard/secondLocation" element={<SecondLocationWithNavigate />} />
         </Routes>
       </BrowserRouter>
     );
