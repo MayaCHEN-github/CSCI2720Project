@@ -11,3 +11,8 @@ comments: {
         }
     }
 因为反正查到了嵌套一个穿回去就能用，何必新建document，NoSQL调用多个数据库很麻烦的。。
+
+
+update: for "Find event price <= price"
+因为db存的price是个string，也能比但感觉适合放在前端，因为后端本来就没写price string的处理
+所以暂时功能为返回所有events，然后看后续要不要直接前端filter
