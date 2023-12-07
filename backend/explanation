@@ -1,0 +1,2 @@
+for event:
+venueId实际上没有用hw3的方式作为外键存在，因为太麻烦了。。而且这个government website总不至于出现一个event选了一个不存在的location这种error吧
