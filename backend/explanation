@@ -1,2 +1,13 @@
 for event:
-venueId实际上没有用hw3的方式作为外键存在，因为太麻烦了。。而且这个government website总不至于出现一个event选了一个不存在的location这种error吧
+venueId实际上没有用hw3的方式作为外键存在，因为太麻烦了。。
+而且这个government website总不至于出现一个event选了一个不存在的location这种error吧
+
+update: delete comments schema.
+直接在users里加一个：
+comments: {
+        comment: {
+            venueId: Number,
+            content: String
+        }
+    }
+因为反正查到了嵌套一个穿回去就能用，何必新建document，NoSQL调用多个数据库很麻烦的。。
