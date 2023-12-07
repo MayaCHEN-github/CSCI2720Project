@@ -2,7 +2,7 @@
 const { Venue, Event } = require('../models/Models')
 const mongoose = require('mongoose');
 
-// get 10 venus with at least 3 events.
+//function 1: get 10 venus with at least 3 events.
 const getVenues = async (req, res) => {
     const result = await Event.aggregate(
         [{ $group: { _id: "$venueId", num_event: { $sum: 1 } } }]
@@ -22,13 +22,31 @@ const getVenues = async (req, res) => {
     // get corresponding venues
     const venues = await Venue.find({ venueId: { $in: venuesListId } });
 
-    console.log(venues.length)
-    console.log(venuesLeast.length)
-    
-    res.status(200).json({ venuesL: venues, eventCount: venuesLeast })
+    res.status(200).json({ venuesInfo: venues, eventCount: venuesLeast })
+}
+
+// function 2: search keyword in venue name
+const getByKeyword = async (req, res) => {
+    const key = req.params.key
+    const result = await Venue.find({ name: { $regex: key, $options: "i" } });
+    res.status(200).json(result);
+}
+
+// function 3: single venue page
+const getById = async (req, res) => {
+    const result = await Venue.find({ venueId: req.params.id });
+    res.status(200).json(result);
+}
+
+// function 4: get all event
+const getEvents = async (req, res) => {
+    const result = await Event.find({});
+    res.status(200).json(result);
 }
 
 // export function
 module.exports = {
-    getVenues
+    getVenues,
+    getByKeyword,
+    getById,
 }
