@@ -1,26 +1,20 @@
 const express = require('express');
 const {
     getVenues,
-    // getOneWorkout,
-    // createWorkout,
-    // deleteWorkout,
-    // updateWorkout
+    getByKeyword,
+    getById,
 } = require('../controllers/venueControllers')
 
 const router = express.Router();
 
-// get all 
+// function 1: get 10 venus with at least 3 events.
 router.get('/', getVenues)
 
-// // get a single
-// router.get('/:id', getOneWorkout)
-// // post a new
-// router.post('/', createWorkout)
+// function 2: search keyword in venue name
+router.get('/key/:key', getByKeyword)
 
-// // delete a new
-// router.delete('/:id', deleteWorkout)
+// function 3: single venue page
+router.get('/:id', getById)
 
-// // update a new
-// router.patch('/:id', updateWorkout)
 
 module.exports = router;
