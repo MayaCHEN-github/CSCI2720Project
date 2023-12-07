@@ -80,6 +80,5 @@ const User = mongoose.model('User', userSchema);
 module.exports = {
     Event,
     Venue,
-    User,
-    // Comment
+    User
 };
