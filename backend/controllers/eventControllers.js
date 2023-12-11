@@ -1,5 +1,5 @@
 //model
-const { Venue, Event } = require('../models/Models')
+const { Event } = require('../models/Models')
 const mongoose = require('mongoose');
 
 
