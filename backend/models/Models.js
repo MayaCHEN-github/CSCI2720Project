@@ -36,49 +36,11 @@ const eventSchema = new Schema({
     venueId: { type: Number }
 });
 
-
-const userSchema = new Schema({
-    name: {
-        type: String,
-        required: true,
-        unique: true
-    },
-    type: {
-        type: String,
-        required: true,
-    },
-    password: {
-        type: String,
-        required: true,
-    },
-    favor: [Number],
-    comments: {
-        comment: {
-            venueId: Number,
-            content: String
-        }
-    }
-});
-
-// const commentSchema = new Schema({
-//     content: {
-//         type: String
-//     },
-//     venueId: {
-//         type: Number
-//     },
-//     userId: {
-//         type: mongoose.Schema.Types.ObjectId, ref: 'user'
-//     }
-// })
-
 const Event = mongoose.model('Event', eventSchema);
 const Venue = mongoose.model('Venue', venueSchema);
-const User = mongoose.model('User', userSchema);
-// const Comment = mongoose.model('Comment', commentSchema);
 
 module.exports = {
     Event,
-    Venue,
-    User
+    Venue
 };
+
