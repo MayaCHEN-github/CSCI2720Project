@@ -10,6 +10,10 @@ const { Venue, Event } = require('./models/Models')
 
 // router
 const venueRoute = require('./routes/venues')
+const eventRoute = require('./routes/events')
+const adminRoute = require('./routes/admin')
+const favorRoute = require('./routes/favors')
+const loginRoute = require('./routes/login')
 
 const app = express();
 app.use(cors());
@@ -22,6 +26,10 @@ app.use((req, res, next) => {
 
 // routes for localhost/api/venues/...
 app.use('/api/venues', venueRoute);
+app.use('/api/events', eventRoute);
+app.use('/api/favor',favorRoute);
+app.use('/user', loginRoute);
+app.use('/admin', adminRoute);
 
 // connect to db
 mongoose.connect('mongodb://127.0.0.1:27017/project')
@@ -84,7 +92,7 @@ mongoose.connect('mongodb://127.0.0.1:27017/project')
                                     price: price,
                                     venueId: venueId
                                 });
-                                newEvent.save().catch((error)=>{})
+                                newEvent.save().catch((error) => { })
                                 // ignore the same id error.
                             } catch (error) {
                                 console.log("error:" + error.message)
