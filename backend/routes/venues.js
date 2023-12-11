@@ -3,6 +3,7 @@ const {
     getVenues,
     getByKeyword,
     getById,
+    addComment
 } = require('../controllers/venueControllers')
 
 const router = express.Router();
@@ -13,8 +14,11 @@ router.get('/', getVenues)
 // function 2: search keyword in venue name
 router.get('/key/:key', getByKeyword)
 
-// function 3: single venue page
+// function 3: venue info + comments on it
 router.get('/:id', getById)
 
+// comments part
+// add comment for venue id for user name
+router.post('/comment', addComment)
 
 module.exports = router;
