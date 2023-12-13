@@ -14,6 +14,7 @@ import ReadEvent from './CURDevent/readEventButton.js';
 import UpdateUserInfo from './CURDuser/updateUserButton.js';
 import CreateUser from './CURDuser/createUser.js';
 import ReadUserInfo from './CURDuser/readUser.js';
+import NotRegistered from './notRegister.js';
 import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
 
 const user = {
@@ -86,6 +87,11 @@ class Login extends React.Component {
     }  
   };
 
+  //To navigate
+  notRegister = () => {
+    this.props.navigate('/not-registered');
+  }
+
   render() {
     return (
       <div className="login-background">
@@ -111,8 +117,8 @@ class Login extends React.Component {
                       <input type="password" className="form-control" id="password" ref={this.passwordRef} required />
                     </div>
                     <button type="submit" className="btn btn-primary btn-block mt-3">Continue →</button>
-                    <div className="login-links text-center mt-3">
-                      <a href="/register">Not Registered?</a> | <a href="/forgot-password">Forgot your password?</a>
+                    <div className="login-links text-center mt-3" >
+                      <a href="/not-registered" onClick={() => this.notRegister()}>Not Registered?</a> | <a href="/not-registered" onClick={() => this.notRegister()}>Forgot your password?</a>
                     </div>
                   </form>
                 </div>
@@ -997,7 +1003,7 @@ class App extends React.Component {
           <Route path="/user-dashboard" element={<UserDashboardWithNavigate />} />
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
           <Route path="/user-dashboard/singleLocation" element={<SingleLocationWithNavigate />} />
-
+          <Route path="/not-registered" element={<NotRegistered />} />
           {/* // Event CURD */}
           <Route path="/create-event" element={<CreateEvent />} />
           <Route path="/read-event" element={<ReadEvent />} />
