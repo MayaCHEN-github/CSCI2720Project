@@ -1,5 +1,12 @@
 # CSCI2720Project
+12/13 updated: the content in server fold has not changed, but it's too large to upload
+                1)npm install express mongoose cors @react-google-maps/api https xml2js bcrypt
+                2)cd server
+                  node server.js
 
+                3)cd main folder
+                  npm start
+                  
 11/25 updated: finished LoginPage, pass username value to AdminPage and UserPage 
 
 
