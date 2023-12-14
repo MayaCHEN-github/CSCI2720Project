@@ -12,11 +12,15 @@
   2. Start the server:
      ```
      cd server
+     ```
+     ```
      node server.js
      ```
   3. Start the main application:
      ```
-     cd main folder
+     cd -
+     ```
+     ```
      npm start
      ```
 
