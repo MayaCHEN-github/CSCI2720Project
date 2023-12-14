@@ -42,9 +42,5 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  },
-  "description": "11/25 updated: finished LoginPage, pass username value to AdminPage and UserPage",
-  "main": "index.js",
-  "author": "",
-  "license": "ISC"
+  }
 }
