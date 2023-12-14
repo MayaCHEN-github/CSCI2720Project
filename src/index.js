@@ -1,19 +1,31 @@
 import ReactDOM from "react-dom/client";
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { withRouter } from 'react-router-dom';
 import './custom.css';
-import mapImage from './hong-kong-map.jpeg';
-import eventImage from './shutterstock.jpeg';
-import favoriteImage from './Disneyland .jpeg';
-import DB from './db.jpeg';
-import data from './data.json';
+import mapImage from './images/hong-kong-map.jpeg';
+import eventImage from './images/shutterstock.jpeg';
+import favoriteImage from './images/Disneyland .jpeg';
+import DB from './images/db.jpeg';
+//import data from './data.json';
+import UpdateEventButton from './CURDevent/UpdateEventButton.js'
+import CreateEvent from './CURDevent/creatEventButton.js';
+import ReadEvent from './CURDevent/readEventButton.js';
+import UpdateUserInfo from './CURDuser/updateUserButton.js';
+import CreateUser from './CURDuser/createUser.js';
+import ReadUserInfo from './CURDuser/readUser.js';
+import NotRegistered from './notRegister.js';
 import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
 
-
-
-
+const user = {
+  name: null
+};
 
 // Login
+function LoginWithNavigate(props) {
+  let navigate = useNavigate();
+  return <Login {...props} navigate={navigate} />;
+}
 class Login extends React.Component {
   constructor(props) {
     super(props);
@@ -27,12 +39,58 @@ class Login extends React.Component {
   setRole = (role) => {
     this.setState({ role });
   };
+  
+  //validate login and redirect
+  handleSubmit = async (event) => {
 
-  handleSubmit = (event) => {
     event.preventDefault();
-    const path = this.state.role === 'admin' ? '/admin-dashboard' : '/user-dashboard';
-    this.props.navigate(path);
+    const name = this.usernameRef.current.value;
+    const password = this.passwordRef.current.value;
+    const type = this.state.role;
+    
+    if (name && password){
+      try {
+        const response = await fetch('http://localhost:8080/user/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ name, password })
+        });
+
+        const data = await response.json();
+        
+        if (response.ok) {
+          // Handle the success case, such as storing the token and redirecting the user
+          if ( type === data.type)
+          {
+            console.log('Login successful:', data);
+            user.name = data.name;
+            const path = this.state.role === 'admin' ? '/admin-dashboard' : '/user-dashboard';
+            this.props.navigate(path);
+          } else {
+            //handle the case when the user-admin toggle mismatch the user data.
+            console.error('Login failed: user type mismatch.');
+            alert('User type does not match.');
+          }
+        } else {
+          // Handle errors, such as displaying an error message to the user
+          console.log(data.name);
+          console.log(data.password);
+          console.error('Login failed:',data.error);
+          alert('Login failed. Please check Username or Password once again.');
+        }
+      } catch (error) {
+        console.error('Network error:', error);
+        alert('Login failed. Please try again.');
+      }
+    }  
   };
+
+    //To navigate
+    notRegister = () => {
+      this.props.navigate('/not-registered');
+    }
 
   render() {
     return (
@@ -60,7 +118,7 @@ class Login extends React.Component {
                     </div>
                     <button type="submit" className="btn btn-primary btn-block mt-3">Continue →</button>
                     <div className="login-links text-center mt-3">
-                      <a href="/register">Not Registered?</a> | <a href="/forgot-password">Forgot your password?</a>
+                    <a href="/not-registered" onClick={() => this.notRegister()}>Not Registered?</a> | <a href="/not-registered" onClick={() => this.notRegister()}>Forgot your password?</a>
                     </div>
                   </form>
                 </div>
@@ -73,18 +131,18 @@ class Login extends React.Component {
   }
 }
 
+// User dashboard 111
 function UserDashboardWithNavigate(props) {
   let navigate = useNavigate();
   return <UserDashboard {...props} navigate={navigate} />;
 }
-
 
 class UserDashboard extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
       activeMenuItem: 'Location',
-      userName: 'Amanda',
+      userName: user.name,
     };
   }
 
@@ -114,13 +172,22 @@ class UserDashboard extends React.Component {
       case 'Event':
         return <EventContent />;
       case 'Favorite':
-        return <Favorite />;
+        return <FavoriteWithNavigate />;
       case 'Map':
         return <MapWithNavigate />;
       default:
         return null;
     }
   }
+
+  handleLogout = () => {
+    // set the user name to null
+    user.name = null;
+
+    // Redirect to the login page
+    const path = '/login';
+    this.props.navigate(path);
+  };
 
   render() {
     const { activeMenuItem, userName } = this.state;
@@ -146,62 +213,63 @@ class UserDashboard extends React.Component {
           <div className="top-bar d-flex justify-content-end align-items-center mb-2">
             <div className="user-logout">
               <span className="username-display" >{userName}</span>
-              <button className="logout-btn" onClick={this.props.onLogout}>Logout</button>
+              <button className="logout-btn" onClick={this.handleLogout}>Logout</button>
             </div>
           </div>
 
           {this.renderContent()}
 
-          {/* <div className="search-filter-row">
-            <div className="col-md-8 search-container">
-              <input type="text" className="search-bar" placeholder="Search Locations" />
-              <button className="search-btn">&#10140;</button>
-            </div>
-            <div className="col-md-4 ">
-              <button className="btn filter-btn">Filter: Order by Event Number</button>
-            </div></div>
-
-          <div className="image-row mt-3">
-            <img src={mapImage} className="img-fluid" alt="Map" />
-          </div>
-          <div className="table-row mt-3 flex-grow-1">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Star</th>
-                  <th>Location</th>
-                  <th>Event Number</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><svg viewBox="0 0 24 24" className="icon"><path d="M12 .587l3.297 6.677 7.4.574-5.35 5.209 1.263 7.367L12 17.75l-6.61 3.664 1.263-7.367-5.35-5.209 7.4-.574z"></path></svg></td>
-                  <td>Tai Po Public Library</td>
-                  <td>5</td>
-                </tr>
-                <tr>
-                  <td><svg viewBox="0 0 24 24" className="icon"><path d="M12 .587l3.297 6.677 7.4.574-5.35 5.209 1.263 7.367L12 17.75l-6.61 3.664 1.263-7.367-5.35-5.209 7.4-.574z"></path></svg></td>
-                  <td>Yuen Long Public Library</td>
-                  <td>10</td>
-                </tr>
-              </tbody>
-            </table>
-          </div> */}
         </div>
       </div>
     );
   }
 }
 
-// LocationContent
+// user- LocationContent
 class LocationContent extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
       activeMenuItem: 'Location',
-      userName: 'Amanda',
+      userName: user.name,
       sortMode: 'BY_LOCATION', // New state variable for sorting mode
+      venues: [],
+      searchTerm: '',
+      filterApplied: false,
+      userFavorites: [],
     };
+  }
+
+  componentDidMount() {
+    this.fetchVenues();
+    this.fetchUserFavorites();
+  }
+
+  fetchUserFavorites = async () => {
+    try {
+      const response = await fetch(`http://localhost:8080/api/favor/${this.state.userName}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch user favorites');
+      }
+      const favorites = await response.json();
+      this.setState({ userFavorites: favorites });
+    } catch (error) {
+      console.error('Error fetching user favorites:', error);
+    }
+  }
+
+  fetchVenues = async () => {
+    try {
+      const response = await fetch('http://localhost:8080/api/venues/'); 
+      if (!response.ok) {
+        console.error('Error fetching venues:', response.status);
+        return;
+      }
+      const data = await response.json();
+      this.setState({ venues: data.combineArray });
+    } catch (error) {
+      console.error('Fetching venues failed:', error);
+    }
   }
 
   setActiveMenuItem = (menuItem) => {
@@ -219,7 +287,36 @@ class LocationContent extends React.Component {
   handleRowClick = (locationData) => {
     this.props.navigate('/user-dashboard/singleLocation', { state: { locationData } });
   };
-  
+
+  handleStarClick = async (venueId) => {
+    const isFavorite = this.state.userFavorites.includes(venueId);
+    const method = isFavorite ? 'DELETE' : 'POST';
+    try {
+      const response = await fetch(`http://localhost:8080/api/favor`, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ name: this.state.userName, venueId })
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to ${isFavorite ? 'remove from' : 'add to'} favorites`);
+      }
+      this.fetchUserFavorites(); // Refresh the favorites list
+    } catch (error) {
+      console.error('Error updating favorites:', error);
+    }
+  };
+
+  renderStar = (venueId) => {
+    const isFavorite = this.state.userFavorites.includes(venueId);
+    const fillColor = isFavorite ? "pink" : "none";
+    return (
+      <svg onClick={(e) => { e.stopPropagation(); this.handleStarClick(venueId); }} viewBox="0 0 24 24" className="icon" fill={fillColor}>
+        <path d="M12 .587l3.297 6.677 7.4.574-5.35 5.209 1.263 7.367L12 17.75l-6.61 3.664 1.263-7.367-5.35-5.209 7.4-.574z"></path>
+      </svg>
+    );
+  };
 
   toggleSortMode = () => {
     this.setState(prevState => {
@@ -234,68 +331,109 @@ class LocationContent extends React.Component {
     });
   }
 
-  getSortedLocations() {
+  getSortedLocations= () => {
     const { sortMode } = this.state;
-    const locations = [...data]; // Create a copy of the data
+    const  locations = this.state.venues;
+
+    //const locations = [...data]; // Create a copy of the data
+    switch (sortMode) {
+      case 'HIGH_TO_LOW':
+        return locations.sort((a, b) => b.eventCount - a.eventCount);
+      case 'LOW_TO_HIGH':
+        return locations.sort((a, b) => a.eventCount - b.eventCount);
+      default:
+        return locations.sort((a, b) => a["venueId"] - b["venueId"]);
+    }
+  }
+
+  handleSearchInputChange = (event) => {
+    this.setState({ searchTerm: event.target.value });
+    this.setState({ filterApplied: false });
+  };
+
+  handleSearch = () => {
+    // Trigger search action
+    this.setState({ filterApplied: true }); // Indicate that filtering should be applied
+  };
+
+
+  getFilteredAndSortedLocations = () => {
+    const { sortMode, venues, searchTerm, filterApplied } = this.state;
+    
+    // Apply filter only if filterApplied is true
+    let filteredVenues = filterApplied 
+      ? venues.filter(venue => venue.name.toLowerCase().includes(searchTerm.toLowerCase()))
+      : venues;
 
     switch (sortMode) {
       case 'HIGH_TO_LOW':
-        return locations.sort((a, b) => b.Events.length - a.Events.length);
+        return filteredVenues.sort((a, b) => b.eventCount - a.eventCount);
       case 'LOW_TO_HIGH':
-        return locations.sort((a, b) => a.Events.length - b.Events.length);
+        return filteredVenues.sort((a, b) => a.eventCount - b.eventCount);
       default:
-        return locations.sort((a, b) => a["Location Number"] - b["Location Number"]);
+        return filteredVenues.sort((a, b) => a["venueId"] - b["venueId"]);
     }
   }
 
   render() {
-    const sortedLocations = this.getSortedLocations();
+    const locations = this.getFilteredAndSortedLocations();
+    //console.log(sortedLocations);
 
     return (
       <div>
         <div className="search-filter-row">
           <div className="col-md-8 search-container">
-            <input type="text" className="search-bar" placeholder="Search Locations" />
-            <button className="search-btn">&#10140;</button>
+            <input
+              type="text"
+              className="search-bar"
+              placeholder="Search Locations"
+              value={this.state.searchTerm}
+              onChange={this.handleSearchInputChange}
+            />
+            <button className="search-btn" onClick={this.handleSearch}>&#10140;</button>
           </div>
           <div className="col-md-4 ">
-          <button className="btn filter-btn" onClick={this.toggleSortMode}>Filter: Order by Event Number</button>
-          </div></div>
+            <button className="btn filter-btn" onClick={this.toggleSortMode}>
+              Filter: Order by Event Number
+            </button>
+          </div>
+        </div>
 
         <div className="image-row mt-3">
           <img src={mapImage} className="img-fluid" alt="Map" />
         </div>
         <div className="table-row mt-3 flex-grow-1">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Star</th>
-                <th>Location</th>
-                <th>Event Number</th>
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Star</th>
+              <th>Location</th>
+              <th>Event Number</th>
+            </tr>
+          </thead>
+          <tbody>
+            {locations.map(location => (
+              <tr key={location["venueId"]} onClick={() => this.handleRowClick(location)}>
+                <td>{this.renderStar(location["venueId"])}</td>
+                <td>{location.name}</td>
+                <td>{location.eventCount}</td>
               </tr>
-            </thead>
-            <tbody>
-              {sortedLocations.map(location => (
-                <tr key={location["Location Number"]} onClick={() => this.handleRowClick(location)}>
-                  <td><svg viewBox="0 0 24 24" className="icon"><path d="M12 .587l3.297 6.677 7.4.574-5.35 5.209 1.263 7.367L12 17.75l-6.61 3.664 1.263-7.367-5.35-5.209 7.4-.574z"></path></svg></td>
-                  <td>{location.Location}</td>
-                  <td>{location.Events.length}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       </div>
-    );
+    </div>
+  );
   }
 }
 
-// EventContent
+// user- EventContent
 class EventContent extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
       filterUnder100: false,
+      events:[]
     };
   }
 
@@ -304,23 +442,52 @@ class EventContent extends React.Component {
       filterUnder100: !prevState.filterUnder100,
     }));
   }
-
-  isPriceUnder100 = (priceString) => {
-    const prices = priceString.split(';').map(price => parseFloat(price.replace(/[^0-9.-]+/g, "")));
-    return prices.some(price => price < 100);
+  
+  fetchEvents = async () => {
+    try {
+      const response = await fetch('http://localhost:8080/api/events/'); 
+      if (!response.ok) {
+        console.error('Error fetching events:', response.status);
+        return;
+      }
+      const data = await response.json();
+      this.setState({ events: data });
+    } catch (error) {
+      console.error('Fetching events failed:', error);
+    }
+  }
+  componentDidMount() {
+    this.fetchEvents();
   }
 
-  getFilteredEvents() {
-    let allEvents = [];
-    // Aggregate all events from each location
-    data.forEach(location => {
-      location.Events.forEach(event => {
-        if (!this.state.filterUnder100 || this.isPriceUnder100(event.Price)) {
-          allEvents.push(event);
-        }
-      });
-    });
-    return allEvents;
+  isPriceUnder100 = (priceString) => {
+    // Consider 'Free Admission' as under 100
+    if (priceString === 'Free Admission' || priceString === '') {
+      return true;
+    }
+    // If it's not 'Free Admission', parse the string for prices
+    const prices = priceString.split(',').map(price => parseFloat(price.replace(/[^0-9.-]+/g, "")));
+    return prices.some(price => price < 100);
+  };
+
+  // fitered the price under 100 events or not
+  getFilteredEvents = () => {
+    // Check the state to see whether to filter the events
+    if (this.state.filterUnder100) {
+      // Filter events with price under 100 or free
+      return this.state.events.filter(event => this.isPriceUnder100(event.price));
+    } else {
+      // If filterUnder100 is false, return all events
+      return this.state.events;
+    }
+  }
+  //show the first num character of the event title
+  truncateString(value, num) {
+    let str = String(value);
+    if (str.length <= num) {
+      return str;
+    }
+    return str.slice(0, num) + '...';
   }
 
   render() {
@@ -346,11 +513,11 @@ class EventContent extends React.Component {
               </tr>
             </thead>
             <tbody>
-              {allEvents.map((event, index) => (
-                <tr key={index}>
-                  <td>{index + 1}</td>
-                  <td>{event["Event Name"]}</td>
-                  <td>{event.Price}</td>
+              {allEvents.map(event => (
+                <tr key={event.eventId}>
+                  <td>{event.eventId}</td>
+                  <td>{this.truncateString(event.title,40)}</td>
+                  <td>{event.price}</td>
                 </tr>
               ))}
             </tbody>
@@ -361,9 +528,65 @@ class EventContent extends React.Component {
   }
 }
 
+//
+// TO BE FIXED
+//
+function FavoriteWithNavigate(props) {
+  let navigate = useNavigate();
+  // Retrieve the username from a global state/context or props
+  const userName = user.name; // Replace with actual way of retrieving the username
+
+  return <Favorite {...props} navigate={navigate} userName={userName} />;
+}
 
 class Favorite extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      venues: [], // State to hold all venues
+      favorites: [], // State to hold favorite venue IDs
+    };
+  }
+
+  componentDidMount() {
+    this.fetchFavorites(); // Fetch favorites when the component mounts
+    this.fetchVenues(); // Fetch all venues
+  }
+
+  fetchVenues = async () => {
+    try {
+      const response = await fetch('http://localhost:8080/api/venues/');
+      if (!response.ok) {
+        console.error('Error fetching venues:', response.status);
+        return;
+      }
+      const data = await response.json();
+      this.setState({ venues: data.combineArray });
+    } catch (error) {
+      console.error('Fetching venues failed:', error);
+    }
+  }
+
+  fetchFavorites = async () => {
+    try {
+      const { userName } = this.props;
+      const response = await fetch(`http://localhost:8080/api/favor/${userName}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch favorites');
+      }
+      const favoriteVenueIds = await response.json();
+      this.setState({ favorites: favoriteVenueIds });
+    } catch (error) {
+      console.error('Error fetching favorites:', error);
+    }
+  }
+
   render() {
+    const { venues, favorites } = this.state;
+
+    // Filter venues to include only those in the favorites list
+    const favoriteVenues = venues.filter(venue => favorites.includes(venue.venueId));
+
     return (
       <div>
         <div className="image-row mt-3">
@@ -379,16 +602,17 @@ class Favorite extends React.Component {
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td><svg viewBox="0 0 24 24" className="icon" fill="pink"><path d="M12 .587l3.297 6.677 7.4.574-5.35 5.209 1.263 7.367L12 17.75l-6.61 3.664 1.263-7.367-5.35-5.209 7.4-.574z"></path></svg></td>
-                <td>Tai Po Public Library</td>
-                <td>5</td>
-              </tr>
-              <tr>
-                <td><svg viewBox="0 0 24 24" className="icon" fill="pink"><path d="M12 .587l3.297 6.677 7.4.574-5.35 5.209 1.263 7.367L12 17.75l-6.61 3.664 1.263-7.367-5.35-5.209 7.4-.574z"></path></svg></td>
-                <td>Yuen Long Public Library</td>
-                <td>10</td>
-              </tr>
+              {favoriteVenues.map((venue, index) => (
+                <tr key={index}>
+                  <td>
+                    <svg viewBox="0 0 24 24" className="icon" fill="pink">
+                      <path d="M12 .587l3.297 6.677 7.4.574-5.35 5.209 1.263 7.367L12 17.75l-6.61 3.664 1.263-7.367-5.35-5.209 7.4-.574z"></path>
+                    </svg>
+                  </td>
+                  <td>{venue.name}</td>
+                  <td>{venue.eventCount}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -397,6 +621,9 @@ class Favorite extends React.Component {
   }
 }
 
+
+
+// user- Single page
 function SingleLocationWithNavigate(props) {
   let navigate = useNavigate();
   let location = useLocation();
@@ -412,25 +639,79 @@ class SingleLocation extends React.Component {
     };
   }
 
+  fetchComments = async () => {
+    try {
+      const response = await fetch(`http://localhost:8080/api/venues/${this.props.locationData.venueId}`); 
+      if (!response.ok) {
+        console.error('Error fetching venues:', response.status);
+        return;
+      }
+      const data = await response.json();
+      this.setState({ comments: data.comments });
+      console.log('Success:',data.comments);
+    } catch (error) {
+      console.error('Fetching venues failed:', error);
+    }
+  }
+
+  componentDidMount() {
+    this.fetchComments();
+  }
+
   handleNewCommentChange = (event) => {
     this.setState({ newComment: event.target.value });
   };
 
-  handleAddComment = () => {
-    this.setState(prevState => ({
-      comments: [...prevState.comments, prevState.newComment],
-      newComment: ''
-    }));
-  };
+  handleAddComment = async () => {
+    const commentData = {
+      venueId: this.props.locationData.venueId, // Including venueId if required by the backend in the body as well
+      name: user.name,       // The name of the person making the comment
+      content: this.state.newComment // The actual comment content
+    };
+    if (commentData.name) {
+      try {
+        const response = await fetch(`http://localhost:8080/api/venues/comment`, {
+          method: 'POST', 
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(commentData) // Convert the JavaScript object to a JSON string
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+    
+        const data = await response.json();
+        console.log('Comment successfully added:', data);
+
+        // Reset the newComment state to an empty string
+        this.setState({ newComment: '' });
+    
+        // Optionally, refresh comments list or update UI here
+        this.fetchComments(); // If you have a method to refresh comments
+    
+      } catch (error) {
+        console.error('Error adding comment:', error);
+      }
+    } else {
+      alert("please login first!");
+      const path = '/login';
+      this.props.navigate(path);
+    }
+  }
 
   navigateBack = () => {
     this.props.navigate('/user-dashboard');
   };
 
-  parsePosition(positionString) {
-    const [lat, lng] = positionString.split(',').map(Number);
-    return { lat, lng };
-  }
+  parsePosition = (latitude, longitude) => {
+    // Parse latitude and longitude to numbers and return as an object
+    //console.log(latitude,longitude);
+    return {
+      lat: parseFloat(latitude),
+      lng: parseFloat(longitude)
+    };
+  };
 
   render() {
     const { locationData } = this.props;
@@ -438,7 +719,7 @@ class SingleLocation extends React.Component {
       return <div>Loading...</div>; // Or handle the absence of data appropriately
     }
 
-    const position = this.parsePosition(locationData.Position);
+    const position = this.parsePosition(locationData.latitude,locationData.longitude);
     const mapStyles = {        
       height: "400px",
       width: "100%"
@@ -446,7 +727,7 @@ class SingleLocation extends React.Component {
 
     return (
       <div className="single-location-container">
-        <h1>{locationData.Location}</h1>
+        <h1>{locationData.name}</h1>
         <div className="map-container">
           <LoadScript googleMapsApiKey="AIzaSyC3Z5syc1h_61Bcp_qprCGb8z3usMzwkl4">
             <GoogleMap
@@ -460,16 +741,16 @@ class SingleLocation extends React.Component {
         </div>
         <div className="details-container">
           <h2>Location Details</h2>
-          <p><strong>Address:</strong> {locationData.Address}</p>
-          <p><strong>Hours:</strong> {locationData.Hours}</p>
-          <p><strong>Description:</strong> {locationData.Description}</p>
-          <p><strong>Price:</strong> {locationData.Price}</p>
+          <p><strong>Name:</strong> {locationData.name}</p>
+          <p><strong>Event Number:</strong> {locationData.eventCount}</p>
+          {/* <p><strong>Description:</strong> {locationData.Description}</p>
+          <p><strong>Price:</strong> {locationData.Price}</p> */}
         </div>
         <div className="comments-container">
           <h2>User Comments</h2>
           <div className="comments-list">
-            {this.state.comments.map((comment, index) => (
-              <p key={index}>{comment}</p>
+            {this.state.comments.map((comment) => (
+              <p key={comment.userName}>{comment.userName}: {comment.content}</p>
             ))}
           </div>
           <div className="add-comment-container">
@@ -498,14 +779,36 @@ class Map extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      locations: data
+      locations:[]
     };
   }
-
-  parsePosition(positionString) {
-    const [lat, lng] = positionString.split(',').map(Number);
-    return { lat, lng };
+  fetchVenues = async () => {
+    try {
+      const response = await fetch('http://localhost:8080/api/venues/'); 
+      if (!response.ok) {
+        console.error('Error fetching venues:', response.status);
+        return;
+      }
+      const data = await response.json();
+      this.setState({ locations: data.combineArray });
+      console.log('Success:',data);
+    } catch (error) {
+      console.error('Fetching venues failed:', error);
+    }
   }
+
+  componentDidMount() {
+    this.fetchVenues();
+  }
+
+  parsePosition = (latitude, longitude) => {
+    // Parse latitude and longitude to numbers and return as an object
+    //console.log(latitude,longitude);
+    return {
+      lat: parseFloat(latitude),
+      lng: parseFloat(longitude)
+    };
+  };
 
   handleMarkerClick = (locationData) => {
     this.props.navigate('/user-dashboard/singleLocation', { state: { locationData } });
@@ -531,10 +834,10 @@ class Map extends React.Component {
         >
           {
            this.state.locations.map(item => {
-            const position = this.parsePosition(item.Position);
+            const position = this.parsePosition(item.latitude, item.longitude);
             return (
               <Marker 
-                key={item["Location Number"]} 
+                key={item.venueId} 
                 position={position} 
                 onClick={() => this.handleMarkerClick(item)}
                 />
@@ -548,7 +851,7 @@ class Map extends React.Component {
 }
 
 
-// Admin 
+// Admin dashboard 222
 class AdminDashboard extends React.Component {
   constructor(props) {
     super(props);
@@ -568,8 +871,6 @@ class AdminDashboard extends React.Component {
       User: <svg viewBox="0 0 24 24" className="icon">
         <path d="M12,2A10,10,0,1,0,22,12,10,10,0,0,0,12,2Zm0,3a3,3,0,1,1-3,3A3,3,0,0,1,12,5Zm0,14.2a7.2,7.2,0,0,1-6-3.1c0.1-2,4-3.1,6-3.1s5.9,1.1,6,3.1A7.2,7.2,0,0,1,12,19.2Z"></path>
       </svg>
-
-
     };
     return icons[name];
   }
@@ -578,13 +879,21 @@ class AdminDashboard extends React.Component {
     const { activeMenuItem } = this.state;
     switch (activeMenuItem) {
       case 'Event':
-        return <StoredEventContent />;
+        return <StoredEventContentWithNavigate />;
       case 'User':
-        return <User />;
+        return <UserContentWithNavigate />;
       default:
         return null;
     }
   }
+  handleLogout = () => {
+    // set the user name to null
+    user.name = null;
+
+    // Redirect to the login page
+    const path = '/login';
+    this.props.navigate(path);
+  };
 
   render() {
     const { activeMenuItem, adminName } = this.state;
@@ -610,7 +919,7 @@ class AdminDashboard extends React.Component {
           <div className="top-bar d-flex justify-content-end align-items-center mb-2">
             <div className="user-logout">
               <span className="username-display" >{adminName}</span>
-              <button className="logout-btn" onClick={this.props.onLogout}>Logout</button>
+              <button className="logout-btn" onClick={this.handleLogout}>Logout</button>
             </div>
           </div>
 
@@ -621,16 +930,85 @@ class AdminDashboard extends React.Component {
     );
   }
 }
-
+// admin- CURD event
+function StoredEventContentWithNavigate(props) {
+  let navigate = useNavigate();
+  return <StoredEventContent {...props} navigate={navigate} />;
+}
 class StoredEventContent extends React.Component {
 
+  constructor(props) {
+    super(props);
+    // Initialize the state
+    this.state = {
+      events: [],
+    };
+  }
+
+
+  // Function to fetch events
+  fetchEvents = async () => {
+    try {
+      const response = await fetch('http://localhost:8080/admin/event');
+      if (!response.ok) {
+        // Handle response errors if necessary
+        console.error('Error fetching events:', response.status);
+        return;
+      }
+      const events = await response.json();
+      this.setState({ events });
+    } catch (error) {
+      // Handle fetch errors if necessary
+      console.error('Error fetching events:', error);
+    }
+  };
+
+  deleteEvent = async (eventId) => {
+    try {
+      const response = await fetch(`http://localhost:8080/admin/event/${eventId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.status === 404) {
+        // Handle the case where the event was not found
+        console.error(`There is no event with ID: ${eventId}`);
+      } else if (response.status === 204) {
+        // If the delete was successful, remove the event from the state
+        this.setState(prevState => ({
+          events: prevState.events.filter(event => event.eventId !== eventId)
+        }));
+      } else {
+        // Handle other errors
+        console.error('Failed to delete the event:', response.status);
+      }
+    } catch (error) {
+      // Handle errors in communicating with the server
+      console.error('Error deleting the event:', error);
+    }
+  };
+
+  truncateString(value, num) {
+    let str = String(value);
+    if (str.length <= num) {
+      return str;
+    }
+    return str.slice(0, num) + '...';
+  }
+
+
+  handleCreate = () => {
+    this.props.navigate('/create-event');
+  }
+ 
+  readEvent = (id) => {
+    this.props.navigate('/read-event');
+  }
+  
+  updateEvent = (id) => {
+    this.props.navigate('/update-event');
+  }
   render() {
-    const eventsInfo = [
-      { id: 1, info: 'Event 1 Information' },
-      { id: 2, info: 'Event 2 Information' },
-      { id: 3, info: 'Event 3 Information' },
-      { id: 4, info: 'Event 4 Information' },
-    ];
+    const eventsInfo = this.state.events;
 
     return (
       <div className="stored-events-container container ">
@@ -640,8 +1018,9 @@ class StoredEventContent extends React.Component {
         <div className="d-flex justify-content-between mb-2 align-items-center">
           <h2>Stored Events Management</h2>
           <div>
-            <button className="btn btn-outline-primary action-button me-2">Read</button>
-            <button className="btn btn-outline-warning action-button">Update</button>
+            <button className="btn btn-outline-primary action-button me-2" onClick={() => this.fetchEvents()}>
+            Reload
+            </button>
           </div>
         </div>
 
@@ -649,17 +1028,26 @@ class StoredEventContent extends React.Component {
           <table className="table table-dark table-hover">
             <thead className="bg-primary">
               <tr>
-                <th scope="col">Information</th>
+                <th scope="col">Event ID</th>
+                <th scope="col">Event title</th>
                 <th scope="col">Actions</th>
               </tr>
             </thead>
             <tbody>
               {eventsInfo.map(event => (
-                <tr key={event.id}>
-                  <td>{event.info}</td>
+                <tr key={event.eventId}>
+                  <td>{event.eventId}</td>
+                  <td>{this.truncateString(event.title,30)}</td>
                   <td>
-                    <button className="btn btn-outline-danger delete-button" onClick={() => this.props.handleDelete(event.id)}>
+                  <button className="btn btn-outline-primary delete-button me-2" onClick={() => this.readEvent(event.eventId)}>
+                      Read
+                    </button>
+                    <button className="btn btn-outline-danger delete-button me-2" onClick={() => this.deleteEvent(event.eventId)}>
                       Delete
+                    </button>
+                    {/* <UpdateEventButton eventId={event.eventId} onClick={() => this.updateEvent(event.eventId)} /> */}
+                    <button className="btn btn-outline-warning action-button me-2" onClick={() => this.updateEvent(event.id)}>
+                      Update
                     </button>
                   </td>
                 </tr>
@@ -667,35 +1055,70 @@ class StoredEventContent extends React.Component {
             </tbody>
           </table>
         </div>
-        <button className="btn btn-outline-success create-button" onClick={this.props.handleCreate}>+ Create New Event</button>
+        <button className="btn btn-outline-success create-button" onClick={this.handleCreate}>+ Create New Event</button>
       </div>
     );
   }
 }
-
-
-
-
+// admin- CURD user
+function UserContentWithNavigate(props) {
+  let navigate = useNavigate();
+  return <User {...props} navigate={navigate} />;
+}
 class User extends React.Component {
-  
-  render() {
-    const UsersInfo = [
-      { id: 1, info: 'User 1 Information' },
-      { id: 2, info: 'User 2 Information' },
-      { id: 3, info: 'User 3 Information' },
-      { id: 4, info: 'User 4 Information' },
-    ];
 
+  constructor(props) {
+    super(props);
+    // Initialize the state
+    this.state = {
+      users: [],
+    };
+  }
+  
+  fetchUsers = async () => {
+    try {
+      const response = await fetch('http://localhost:8080/admin/user');
+      if (!response.ok) {
+        // Handle response errors if necessary
+        console.error('Error fetching events:', response.status);
+        return;
+      }
+      const users = await response.json();
+      this.setState({ users });
+    } catch (error) {
+      // Handle fetch errors if necessary
+      console.error('Error fetching events:', error);
+    }
+  };
+
+  //To navigate
+  handleCreateUser = () => {
+    this.props.navigate('/create-user');
+  }
+ 
+  readUser = (id) => {
+    this.props.navigate('/read-user');
+  }
+  
+  updateUser = (id) => {
+    this.props.navigate('/update-user');
+  }
+
+  render() {
+    const UsersInfo = this.state.users;
+
+    
     return (
-      <div className="stored-events-container container ">
+      <div className="stored-userss-container container ">
         <div className="image-row">
           <img src={DB} className="img-fluid" alt="Map" />
         </div>
         <div className="d-flex justify-content-between mb-2 align-items-center">
           <h2>User Data Management</h2>
           <div>
-            <button className="btn btn-outline-primary action-button me-2">Read</button>
-            <button className="btn btn-outline-warning action-button">Update</button>
+            <button className="btn btn-outline-primary action-button me-2" onClick={() => this.fetchUsers()}>
+            Reload
+            </button>
           </div>
         </div>
 
@@ -703,17 +1126,25 @@ class User extends React.Component {
           <table className="table table-dark table-hover">
             <thead className="bg-primary">
               <tr>
-                <th scope="col">Information</th>
+                <th scope="col">User Name</th>
+                <th scope="col">User Type</th>
                 <th scope="col">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {UsersInfo.map(event => (
-                <tr key={event.id}>
-                  <td>{event.info}</td>
+              {UsersInfo.map(user => (
+                <tr key={user.name}>
+                  <td>{user.name}</td>
+                  <td>{user.type}</td>
                   <td>
-                    <button className="btn btn-outline-danger delete-button" onClick={() => this.props.handleDelete(event.id)}>
+                    <button className="btn btn-outline-primary action-button me-2" onClick={() => this.props.readUser(user.name)}>
+                    Read
+                    </button>
+                    <button className="btn btn-outline-danger delete-button me-2" onClick={() => this.props.handleDelete(user.name)}>
                       Delete
+                    </button>
+                    <button className="btn btn-outline-warning action-button me-2" onClick={() => this.props.updateUser(user.name)}>
+                      Update
                     </button>
                   </td>
                 </tr>
@@ -721,12 +1152,14 @@ class User extends React.Component {
             </tbody>
           </table>
         </div>
-        <button className="btn btn-outline-success create-button" onClick={this.props.handleCreate}>+ Create New Event</button>
+        <button className="btn btn-outline-success create-button" onClick={this.handleCreateUser}>+ Create New Event</button>
+
       </div>
     );
   }
 }
 
+// ROOT APP
 class App extends React.Component {
   render() {
     return (
@@ -737,16 +1170,22 @@ class App extends React.Component {
           <Route path="/user-dashboard" element={<UserDashboardWithNavigate />} />
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
           <Route path="/user-dashboard/singleLocation" element={<SingleLocationWithNavigate />} />
+          <Route path="/not-registered" element={<NotRegistered />} />
+          {/* // Event CURD */}
+          <Route path="/create-event" element={<CreateEvent />} />
+          <Route path="/read-event" element={<ReadEvent />} />
+          <Route path="/update-event" element={<UpdateEventButton />} />
+          {/* User CURD */}
+          <Route path="/create-user" element={<CreateUser />} />
+          <Route path="/read-user" element={<ReadUserInfo />} />
+          <Route path="/update-user" element={<UpdateUserInfo />} /> 
         </Routes>
       </BrowserRouter>
     );
   }
 }
 
-function LoginWithNavigate(props) {
-  let navigate = useNavigate();
-  return <Login {...props} navigate={navigate} />;
-}
+
 
 const root = ReactDOM.createRoot(document.getElementById('app'));
 root.render(<App />);
