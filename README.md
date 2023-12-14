@@ -1,17 +1,30 @@
 # CSCI2720Project
-12/13 updated: the content in server fold has not changed, but it's too large to upload
-                1)npm install express mongoose cors @react-google-maps/api https xml2js bcrypt
-                2)cd server
-                  node server.js
 
-                3)cd main folder
-                  npm start
-                  
-11/25 updated: finished LoginPage, pass username value to AdminPage and UserPage 
+## Updates
 
+### 12/13 Update
+- The content in the `server` folder has not changed, but it's too large to upload.
+- Setup Instructions:
+  1. Install necessary packages:
+     ```
+     npm install express mongoose cors @react-google-maps/api https xml2js bcrypt
+     ```
+  2. Start the server:
+     ```
+     cd server
+     node server.js
+     ```
+  3. Start the main application:
+     ```
+     cd main folder
+     npm start
+     ```
 
-12/2 updated: finished sort, display locations (1st requirement of user)\
-finished a map displaying locations, and also link to location info, after clicking it can go to single location (2nd requirement of user)\
-finished display a detail info and a map, comments submission needed (4th requirement of user)
+### 12/2 Update
+- Completed the sorting and display of locations (1st requirement of the user).
+- Implemented a map displaying locations, with links to location information. Clicking on a location leads to its detailed view (2nd requirement of the user).
+- Added detailed information and a map view for each location. Comments submission functionality is pending (4th requirement of the user).
 
-(previous login and pass value need to be revised)
+### 11/25 Update
+- Finished the LoginPage. The username value is passed to AdminPage and UserPage.
+- Note: Previous login and password values may need to be revised.
