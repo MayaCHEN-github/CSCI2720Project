@@ -7,7 +7,7 @@ import mapImage from './images/hong-kong-map.jpeg';
 import eventImage from './images/shutterstock.jpeg';
 import favoriteImage from './images/Disneyland .jpeg';
 import DB from './images/db.jpeg';
-import data from './data.json';
+//import data from './data.json';
 import UpdateEventButton from './CURDevent/UpdateEventButton.js'
 import CreateEvent from './CURDevent/creatEventButton.js';
 import ReadEvent from './CURDevent/readEventButton.js';
@@ -87,10 +87,10 @@ class Login extends React.Component {
     }  
   };
 
-  //To navigate
-  notRegister = () => {
-    this.props.navigate('/not-registered');
-  }
+    //To navigate
+    notRegister = () => {
+      this.props.navigate('/not-registered');
+    }
 
   render() {
     return (
@@ -117,8 +117,8 @@ class Login extends React.Component {
                       <input type="password" className="form-control" id="password" ref={this.passwordRef} required />
                     </div>
                     <button type="submit" className="btn btn-primary btn-block mt-3">Continue →</button>
-                    <div className="login-links text-center mt-3" >
-                      <a href="/not-registered" onClick={() => this.notRegister()}>Not Registered?</a> | <a href="/not-registered" onClick={() => this.notRegister()}>Forgot your password?</a>
+                    <div className="login-links text-center mt-3">
+                    <a href="/not-registered" onClick={() => this.notRegister()}>Not Registered?</a> | <a href="/not-registered" onClick={() => this.notRegister()}>Forgot your password?</a>
                     </div>
                   </form>
                 </div>
@@ -136,6 +136,7 @@ function UserDashboardWithNavigate(props) {
   let navigate = useNavigate();
   return <UserDashboard {...props} navigate={navigate} />;
 }
+
 class UserDashboard extends React.Component {
   constructor(props) {
     super(props);
@@ -171,7 +172,7 @@ class UserDashboard extends React.Component {
       case 'Event':
         return <EventContent />;
       case 'Favorite':
-        return <Favorite />;
+        return <FavoriteWithNavigate />;
       case 'Map':
         return <MapWithNavigate />;
       default:
@@ -218,41 +219,6 @@ class UserDashboard extends React.Component {
 
           {this.renderContent()}
 
-          {/* <div className="search-filter-row">
-            <div className="col-md-8 search-container">
-              <input type="text" className="search-bar" placeholder="Search Locations" />
-              <button className="search-btn">&#10140;</button>
-            </div>
-            <div className="col-md-4 ">
-              <button className="btn filter-btn">Filter: Order by Event Number</button>
-            </div></div>
-
-          <div className="image-row mt-3">
-            <img src={mapImage} className="img-fluid" alt="Map" />
-          </div>
-          <div className="table-row mt-3 flex-grow-1">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Star</th>
-                  <th>Location</th>
-                  <th>Event Number</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><svg viewBox="0 0 24 24" className="icon"><path d="M12 .587l3.297 6.677 7.4.574-5.35 5.209 1.263 7.367L12 17.75l-6.61 3.664 1.263-7.367-5.35-5.209 7.4-.574z"></path></svg></td>
-                  <td>Tai Po Public Library</td>
-                  <td>5</td>
-                </tr>
-                <tr>
-                  <td><svg viewBox="0 0 24 24" className="icon"><path d="M12 .587l3.297 6.677 7.4.574-5.35 5.209 1.263 7.367L12 17.75l-6.61 3.664 1.263-7.367-5.35-5.209 7.4-.574z"></path></svg></td>
-                  <td>Yuen Long Public Library</td>
-                  <td>10</td>
-                </tr>
-              </tbody>
-            </table>
-          </div> */}
         </div>
       </div>
     );
@@ -267,8 +233,43 @@ class LocationContent extends React.Component {
       activeMenuItem: 'Location',
       userName: user.name,
       sortMode: 'BY_LOCATION', // New state variable for sorting mode
-      venues: []
+      venues: [],
+      searchTerm: '',
+      filterApplied: false,
+      userFavorites: [],
     };
+  }
+
+  componentDidMount() {
+    this.fetchVenues();
+    this.fetchUserFavorites();
+  }
+
+  fetchUserFavorites = async () => {
+    try {
+      const response = await fetch(`http://localhost:8080/api/favor/${this.state.userName}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch user favorites');
+      }
+      const favorites = await response.json();
+      this.setState({ userFavorites: favorites });
+    } catch (error) {
+      console.error('Error fetching user favorites:', error);
+    }
+  }
+
+  fetchVenues = async () => {
+    try {
+      const response = await fetch('http://localhost:8080/api/venues/'); 
+      if (!response.ok) {
+        console.error('Error fetching venues:', response.status);
+        return;
+      }
+      const data = await response.json();
+      this.setState({ venues: data.combineArray });
+    } catch (error) {
+      console.error('Fetching venues failed:', error);
+    }
   }
 
   setActiveMenuItem = (menuItem) => {
@@ -286,7 +287,36 @@ class LocationContent extends React.Component {
   handleRowClick = (locationData) => {
     this.props.navigate('/user-dashboard/singleLocation', { state: { locationData } });
   };
-  
+
+  handleStarClick = async (venueId) => {
+    const isFavorite = this.state.userFavorites.includes(venueId);
+    const method = isFavorite ? 'DELETE' : 'POST';
+    try {
+      const response = await fetch(`http://localhost:8080/api/favor`, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ name: this.state.userName, venueId })
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to ${isFavorite ? 'remove from' : 'add to'} favorites`);
+      }
+      this.fetchUserFavorites(); // Refresh the favorites list
+    } catch (error) {
+      console.error('Error updating favorites:', error);
+    }
+  };
+
+  renderStar = (venueId) => {
+    const isFavorite = this.state.userFavorites.includes(venueId);
+    const fillColor = isFavorite ? "pink" : "none";
+    return (
+      <svg onClick={(e) => { e.stopPropagation(); this.handleStarClick(venueId); }} viewBox="0 0 24 24" className="icon" fill={fillColor}>
+        <path d="M12 .587l3.297 6.677 7.4.574-5.35 5.209 1.263 7.367L12 17.75l-6.61 3.664 1.263-7.367-5.35-5.209 7.4-.574z"></path>
+      </svg>
+    );
+  };
 
   toggleSortMode = () => {
     this.setState(prevState => {
@@ -300,25 +330,6 @@ class LocationContent extends React.Component {
       }
     });
   }
-
-  fetchVenues = async () => {
-    try {
-      const response = await fetch('http://localhost:8080/api/venues/'); 
-      if (!response.ok) {
-        console.error('Error fetching venues:', response.status);
-        return;
-      }
-      const data = await response.json();
-      this.setState({ venues: data.combineArray });
-    } catch (error) {
-      console.error('Fetching venues failed:', error);
-    }
-  }
-
-  componentDidMount() {
-    this.fetchVenues();
-  }
-
 
   getSortedLocations= () => {
     const { sortMode } = this.state;
@@ -335,46 +346,84 @@ class LocationContent extends React.Component {
     }
   }
 
+  handleSearchInputChange = (event) => {
+    this.setState({ searchTerm: event.target.value });
+    this.setState({ filterApplied: false });
+  };
+
+  handleSearch = () => {
+    // Trigger search action
+    this.setState({ filterApplied: true }); // Indicate that filtering should be applied
+  };
+
+
+  getFilteredAndSortedLocations = () => {
+    const { sortMode, venues, searchTerm, filterApplied } = this.state;
+    
+    // Apply filter only if filterApplied is true
+    let filteredVenues = filterApplied 
+      ? venues.filter(venue => venue.name.toLowerCase().includes(searchTerm.toLowerCase()))
+      : venues;
+
+    switch (sortMode) {
+      case 'HIGH_TO_LOW':
+        return filteredVenues.sort((a, b) => b.eventCount - a.eventCount);
+      case 'LOW_TO_HIGH':
+        return filteredVenues.sort((a, b) => a.eventCount - b.eventCount);
+      default:
+        return filteredVenues.sort((a, b) => a["venueId"] - b["venueId"]);
+    }
+  }
+
   render() {
-    const sortedLocations = this.getSortedLocations();
+    const locations = this.getFilteredAndSortedLocations();
     //console.log(sortedLocations);
 
     return (
       <div>
         <div className="search-filter-row">
           <div className="col-md-8 search-container">
-            <input type="text" className="search-bar" placeholder="Search Locations" />
-            <button className="search-btn">&#10140;</button>
+            <input
+              type="text"
+              className="search-bar"
+              placeholder="Search Locations"
+              value={this.state.searchTerm}
+              onChange={this.handleSearchInputChange}
+            />
+            <button className="search-btn" onClick={this.handleSearch}>&#10140;</button>
           </div>
           <div className="col-md-4 ">
-          <button className="btn filter-btn" onClick={this.toggleSortMode}>Filter: Order by Event Number</button>
-          </div></div>
+            <button className="btn filter-btn" onClick={this.toggleSortMode}>
+              Filter: Order by Event Number
+            </button>
+          </div>
+        </div>
 
         <div className="image-row mt-3">
           <img src={mapImage} className="img-fluid" alt="Map" />
         </div>
         <div className="table-row mt-3 flex-grow-1">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Star</th>
-                <th>Location</th>
-                <th>Event Number</th>
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Star</th>
+              <th>Location</th>
+              <th>Event Number</th>
+            </tr>
+          </thead>
+          <tbody>
+            {locations.map(location => (
+              <tr key={location["venueId"]} onClick={() => this.handleRowClick(location)}>
+                <td>{this.renderStar(location["venueId"])}</td>
+                <td>{location.name}</td>
+                <td>{location.eventCount}</td>
               </tr>
-            </thead>
-            <tbody>
-              {sortedLocations.map(location => (
-                <tr key={location["venueId"]} onClick={() => this.handleRowClick(location)}>
-                  <td><svg viewBox="0 0 24 24" className="icon"><path d="M12 .587l3.297 6.677 7.4.574-5.35 5.209 1.263 7.367L12 17.75l-6.61 3.664 1.263-7.367-5.35-5.209 7.4-.574z"></path></svg></td>
-                  <td>{location.name}</td>
-                  <td>{location.eventCount}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       </div>
-    );
+    </div>
+  );
   }
 }
 
@@ -479,9 +528,65 @@ class EventContent extends React.Component {
   }
 }
 
-// user- FavoriteContent
+//
+// TO BE FIXED
+//
+function FavoriteWithNavigate(props) {
+  let navigate = useNavigate();
+  // Retrieve the username from a global state/context or props
+  const userName = user.name; // Replace with actual way of retrieving the username
+
+  return <Favorite {...props} navigate={navigate} userName={userName} />;
+}
+
 class Favorite extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      venues: [], // State to hold all venues
+      favorites: [], // State to hold favorite venue IDs
+    };
+  }
+
+  componentDidMount() {
+    this.fetchFavorites(); // Fetch favorites when the component mounts
+    this.fetchVenues(); // Fetch all venues
+  }
+
+  fetchVenues = async () => {
+    try {
+      const response = await fetch('http://localhost:8080/api/venues/');
+      if (!response.ok) {
+        console.error('Error fetching venues:', response.status);
+        return;
+      }
+      const data = await response.json();
+      this.setState({ venues: data.combineArray });
+    } catch (error) {
+      console.error('Fetching venues failed:', error);
+    }
+  }
+
+  fetchFavorites = async () => {
+    try {
+      const { userName } = this.props;
+      const response = await fetch(`http://localhost:8080/api/favor/${userName}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch favorites');
+      }
+      const favoriteVenueIds = await response.json();
+      this.setState({ favorites: favoriteVenueIds });
+    } catch (error) {
+      console.error('Error fetching favorites:', error);
+    }
+  }
+
   render() {
+    const { venues, favorites } = this.state;
+
+    // Filter venues to include only those in the favorites list
+    const favoriteVenues = venues.filter(venue => favorites.includes(venue.venueId));
+
     return (
       <div>
         <div className="image-row mt-3">
@@ -497,16 +602,17 @@ class Favorite extends React.Component {
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td><svg viewBox="0 0 24 24" className="icon" fill="pink"><path d="M12 .587l3.297 6.677 7.4.574-5.35 5.209 1.263 7.367L12 17.75l-6.61 3.664 1.263-7.367-5.35-5.209 7.4-.574z"></path></svg></td>
-                <td>Tai Po Public Library</td>
-                <td>5</td>
-              </tr>
-              <tr>
-                <td><svg viewBox="0 0 24 24" className="icon" fill="pink"><path d="M12 .587l3.297 6.677 7.4.574-5.35 5.209 1.263 7.367L12 17.75l-6.61 3.664 1.263-7.367-5.35-5.209 7.4-.574z"></path></svg></td>
-                <td>Yuen Long Public Library</td>
-                <td>10</td>
-              </tr>
+              {favoriteVenues.map((venue, index) => (
+                <tr key={index}>
+                  <td>
+                    <svg viewBox="0 0 24 24" className="icon" fill="pink">
+                      <path d="M12 .587l3.297 6.677 7.4.574-5.35 5.209 1.263 7.367L12 17.75l-6.61 3.664 1.263-7.367-5.35-5.209 7.4-.574z"></path>
+                    </svg>
+                  </td>
+                  <td>{venue.name}</td>
+                  <td>{venue.eventCount}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -515,12 +621,15 @@ class Favorite extends React.Component {
   }
 }
 
+
+
 // user- Single page
 function SingleLocationWithNavigate(props) {
   let navigate = useNavigate();
   let location = useLocation();
   return <SingleLocation {...props} navigate={navigate} locationData={location.state?.locationData} />;
 }
+
 class SingleLocation extends React.Component {
   constructor(props) {
     super(props);
@@ -530,25 +639,79 @@ class SingleLocation extends React.Component {
     };
   }
 
+  fetchComments = async () => {
+    try {
+      const response = await fetch(`http://localhost:8080/api/venues/${this.props.locationData.venueId}`); 
+      if (!response.ok) {
+        console.error('Error fetching venues:', response.status);
+        return;
+      }
+      const data = await response.json();
+      this.setState({ comments: data.comments });
+      console.log('Success:',data.comments);
+    } catch (error) {
+      console.error('Fetching venues failed:', error);
+    }
+  }
+
+  componentDidMount() {
+    this.fetchComments();
+  }
+
   handleNewCommentChange = (event) => {
     this.setState({ newComment: event.target.value });
   };
 
-  handleAddComment = () => {
-    this.setState(prevState => ({
-      comments: [...prevState.comments, prevState.newComment],
-      newComment: ''
-    }));
-  };
+  handleAddComment = async () => {
+    const commentData = {
+      venueId: this.props.locationData.venueId, // Including venueId if required by the backend in the body as well
+      name: user.name,       // The name of the person making the comment
+      content: this.state.newComment // The actual comment content
+    };
+    if (commentData.name) {
+      try {
+        const response = await fetch(`http://localhost:8080/api/venues/comment`, {
+          method: 'POST', 
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(commentData) // Convert the JavaScript object to a JSON string
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+    
+        const data = await response.json();
+        console.log('Comment successfully added:', data);
+
+        // Reset the newComment state to an empty string
+        this.setState({ newComment: '' });
+    
+        // Optionally, refresh comments list or update UI here
+        this.fetchComments(); // If you have a method to refresh comments
+    
+      } catch (error) {
+        console.error('Error adding comment:', error);
+      }
+    } else {
+      alert("please login first!");
+      const path = '/login';
+      this.props.navigate(path);
+    }
+  }
 
   navigateBack = () => {
     this.props.navigate('/user-dashboard');
   };
 
-  parsePosition(positionString) {
-    const [lat, lng] = positionString.split(',').map(Number);
-    return { lat, lng };
-  }
+  parsePosition = (latitude, longitude) => {
+    // Parse latitude and longitude to numbers and return as an object
+    //console.log(latitude,longitude);
+    return {
+      lat: parseFloat(latitude),
+      lng: parseFloat(longitude)
+    };
+  };
 
   render() {
     const { locationData } = this.props;
@@ -556,7 +719,7 @@ class SingleLocation extends React.Component {
       return <div>Loading...</div>; // Or handle the absence of data appropriately
     }
 
-    const position = this.parsePosition(locationData.Position);
+    const position = this.parsePosition(locationData.latitude,locationData.longitude);
     const mapStyles = {        
       height: "400px",
       width: "100%"
@@ -564,7 +727,7 @@ class SingleLocation extends React.Component {
 
     return (
       <div className="single-location-container">
-        <h1>{locationData.Location}</h1>
+        <h1>{locationData.name}</h1>
         <div className="map-container">
           <LoadScript googleMapsApiKey="AIzaSyC3Z5syc1h_61Bcp_qprCGb8z3usMzwkl4">
             <GoogleMap
@@ -578,16 +741,16 @@ class SingleLocation extends React.Component {
         </div>
         <div className="details-container">
           <h2>Location Details</h2>
-          <p><strong>Address:</strong> {locationData.Address}</p>
-          <p><strong>Hours:</strong> {locationData.Hours}</p>
-          <p><strong>Description:</strong> {locationData.Description}</p>
-          <p><strong>Price:</strong> {locationData.Price}</p>
+          <p><strong>Name:</strong> {locationData.name}</p>
+          <p><strong>Event Number:</strong> {locationData.eventCount}</p>
+          {/* <p><strong>Description:</strong> {locationData.Description}</p>
+          <p><strong>Price:</strong> {locationData.Price}</p> */}
         </div>
         <div className="comments-container">
           <h2>User Comments</h2>
           <div className="comments-list">
-            {this.state.comments.map((comment, index) => (
-              <p key={index}>{comment}</p>
+            {this.state.comments.map((comment) => (
+              <p key={comment.userName}>{comment.userName}: {comment.content}</p>
             ))}
           </div>
           <div className="add-comment-container">
@@ -606,11 +769,12 @@ class SingleLocation extends React.Component {
   }
 }
 
-// user- Map, this is for map session (the bigger one)
+// Map, this is for map session (the bigger one)
 function MapWithNavigate(props) {
   let navigate = useNavigate();
   return <Map {...props} navigate={navigate} />;
 }
+
 class Map extends React.Component {
   constructor(props) {
     super(props);
@@ -627,6 +791,7 @@ class Map extends React.Component {
       }
       const data = await response.json();
       this.setState({ locations: data.combineArray });
+      console.log('Success:',data);
     } catch (error) {
       console.error('Fetching venues failed:', error);
     }
@@ -638,6 +803,7 @@ class Map extends React.Component {
 
   parsePosition = (latitude, longitude) => {
     // Parse latitude and longitude to numbers and return as an object
+    //console.log(latitude,longitude);
     return {
       lat: parseFloat(latitude),
       lng: parseFloat(longitude)
@@ -683,6 +849,7 @@ class Map extends React.Component {
     )
   }
 }
+
 
 // Admin dashboard 222
 class AdminDashboard extends React.Component {
