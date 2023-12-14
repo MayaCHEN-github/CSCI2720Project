@@ -4,7 +4,6 @@
 
 ### 12/14 Update
 - Setup Instructions:
-- You should place the folder called "node_modules" on your own in the project folder.
   1. Install necessary packages:
      ```
      npm install express mongoose cors @react-google-maps/api https xml2js bcrypt
